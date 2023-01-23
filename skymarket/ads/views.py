@@ -5,7 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from .models import Ad, Comment
-from .permissions import AdminOrOwner
+from .permissions import IsAdminOrUser
 from .serializers import AdSerializer, AdDetailSerializer, CommentSerializer
 from .filters import AdFilter
 
@@ -31,12 +31,14 @@ class AdViewSet(viewsets.ModelViewSet):
         serializer.save(author=self.request.user)
 
     def get_permissions(self):
-        self.permission_classes = (AllowAny,)
+        permission_classes = (AllowAny,)
 
-        if self.action in ('create', 'retrieve', 'update', 'partial_update', 'destroy', 'me'):
-            self.permission_classes = (AdminOrOwner,)
+        if self.action == "retrieve":
+            permission_classes = (IsAuthenticated,)
+        elif self.action in ["create", "update", "partial_update", "destroy", "me"]:
+            permission_classes = (IsAdminOrUser,)
 
-        return tuple(permission() for permission in self.permission_classes)
+        return tuple(permission() for permission in permission_classes)
 
     @action(detail=False, methods=('get',))
     def me(self, request, *args, **kwargs):
@@ -46,6 +48,7 @@ class AdViewSet(viewsets.ModelViewSet):
 
 
 class CommentViewSet(viewsets.ModelViewSet):
+    queryset = Comment.objects.select_related('author').all()
     serializer_class = CommentSerializer
 
     def get_queryset(self):
@@ -58,9 +61,11 @@ class CommentViewSet(viewsets.ModelViewSet):
         )
 
     def get_permissions(self):
-        self.permission_classes = (IsAuthenticated,)
+        permission_classes = (IsAuthenticated,)
 
-        if self.action in ('create', 'retrieve', 'update', 'partial_update', 'destroy', 'me'):
-            self.permission_classes = (AdminOrOwner,)
+        if self.action in ["retrieve", "list"]:
+            permission_classes = (IsAuthenticated,)
+        elif self.action in ["create", "update", "partial_update", "destroy"]:
+            permission_classes = (IsAdminOrUser,)
 
-        return tuple(permission() for permission in self.permission_classes)
+        return tuple(permission() for permission in permission_classes)
